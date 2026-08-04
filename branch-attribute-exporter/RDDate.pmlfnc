@@ -1,0 +1,139 @@
+-- File:            RDDate.pmlfnc
+-- Type:            Function Definition
+-- Module:          Design
+-- Author:          DROUAIN Rémi
+--
+-- Description:
+-- Generate current date information and week number.
+--
+----------------------------------------------------------------------
+
+define function !!RDDate()
+
+    !datcr = object DATETIME()
+
+    !jour  = !datcr.Date()
+    !mois  = !datcr.Month()
+    !annee = !datcr.Year()
+
+    --------------------------------------------------
+    -- Format DAY on 2 digits
+    --------------------------------------------------
+    if (!jour lt 10) then
+        !jourTxt = '0' & !jour.string()
+    else
+        !jourTxt = !jour.string()
+    endif
+
+    --------------------------------------------------
+    -- Format MONTH on 2 digits
+    --------------------------------------------------
+    if (!mois lt 10) then
+        !moisTxt = '0' & !mois.string()
+    else
+        !moisTxt = !mois.string()
+    endif
+
+    --------------------------------------------------
+    -- Format YEAR
+    --------------------------------------------------
+    !anneeTxt = !annee.string()
+
+    --------------------------------------------------
+    -- Calculate day number since January 1st
+    --------------------------------------------------
+    !nbj = !jour
+
+    if (!mois gt 1) then
+        !nbj = !nbj + 31
+    endif
+
+    if (!mois gt 2) then
+
+        !isLeapYear = false
+
+        !mod4   = !annee.MODULO(4)
+        !mod100 = !annee.MODULO(100)
+        !mod400 = !annee.MODULO(400)
+
+        if ((!mod4 eq 0) and (!mod100 ne 0)) then
+            !isLeapYear = true
+        endif
+
+        if (!mod400 eq 0) then
+            !isLeapYear = true
+        endif
+
+        if (!isLeapYear) then
+            !nbj = !nbj + 28
+        else
+            !nbj = !nbj + 29
+        endif
+
+    endif
+
+    if (!mois gt 3) then
+        !nbj = !nbj + 31
+    endif
+
+    if (!mois gt 4) then
+        !nbj = !nbj + 30
+    endif
+
+    if (!mois gt 5) then
+        !nbj = !nbj + 31
+    endif
+
+    if (!mois gt 6) then
+        !nbj = !nbj + 30
+    endif
+
+    if (!mois gt 7) then
+        !nbj = !nbj + 31
+    endif
+
+    if (!mois gt 8) then
+        !nbj = !nbj + 31
+    endif
+
+    if (!mois gt 9) then
+        !nbj = !nbj + 30
+    endif
+
+    if (!mois gt 10) then
+        !nbj = !nbj + 31
+    endif
+
+    if (!mois gt 11) then
+        !nbj = !nbj + 30
+    endif
+
+    --------------------------------------------------
+    -- Calculate week number
+    --------------------------------------------------
+    !week = !nbj / 7
+    !week = !week.int() + 1
+
+    --------------------------------------------------
+    -- Format week on 2 digits
+    --------------------------------------------------
+    if (!week lt 10) then
+        !weekTxt = '0' & !week.string()
+    else
+        !weekTxt = !week.string()
+    endif
+
+    --------------------------------------------------
+    -- Global variables
+    --------------------------------------------------
+    !!RDDAY   = !jourTxt
+    !!RDMONTH = !moisTxt
+    !!RDYEAR  = !anneeTxt
+    !!RDWEEK  = !weekTxt
+
+    $p RD DAY   = $!jourTxt
+    $p RD MONTH = $!moisTxt
+    $p RD YEAR  = $!anneeTxt
+    $p RD WEEK  = $!weekTxt
+
+endfunction
