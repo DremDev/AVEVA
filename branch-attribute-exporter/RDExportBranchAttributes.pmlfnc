@@ -1,0 +1,298 @@
+-- File: ExportBranchAttributes.pmlfnc
+-- Type: Function Definition
+-- Module: Design
+-- Author: DROUAIN Rémi
+--
+-- Description:
+-- Export BRAN attributes to CSV file
+
+----------------------------------------------------------------------
+  define function !!RDExportBranchAttributes()
+
+  var !brans collect all BRAN 
+    var !lines evaluate name for all from !brans
+
+    !lignes = array()
+    !exportedBranches = 0
+    --------------------------------------------------
+    -- Header CSV
+    --------------------------------------------------
+    !ligne = 'Name;DBNAME;HPOS;TPOS;HDIR;TDIR;HBOR;TBOR;HCON;TCON;HSTUB'
+    !lignes.append(!ligne)
+
+
+    do !line values !lines
+	
+	!elem = !line
+!bran = !elem.dbref()
+handle any
+skip
+endhandle
+
+
+        --------------------------------------------------
+        -- Init variables
+        --------------------------------------------------
+        !name   = ''
+        !dbname = ''
+        !hpos   = ''
+        !tpos   = ''
+        !hdir   = ''
+        !tdir   = ''
+        !hbore  = ''
+        !tbore  = ''
+        !hcon   = ''
+        !tcon   = ''
+        !hstub  = ''
+
+        --------------------------------------------------
+        -- NAME
+        --------------------------------------------------
+        !name = !elem.dbref().name
+        handle any
+            !name = ''
+        endhandle
+
+      
+        --------------------------------------------------
+        -- DBNAME
+        --------------------------------------------------
+        !dbname = !elem.dbref().dbname
+        handle any
+            !dbname = ''
+        endhandle
+
+        --------------------------------------------------
+        -- HPOS propre sans /nom objet
+        --------------------------------------------------
+        !hposObj = !bran.hpos
+        handle any
+            !hposObj = ''
+        endhandle
+
+        !hpos = 'E ' & !hposObj.east & ' N ' & !hposObj.north & ' U ' & !hposObj.up
+        handle any
+            !hpos = ''
+        endhandle
+
+        --------------------------------------------------
+        -- TPOS propre sans /nom objet
+        --------------------------------------------------
+        !tposObj = !bran.tpos
+        handle any
+            !tposObj = ''
+        endhandle
+
+        !tpos = 'E ' & !tposObj.east & ' N ' & !tposObj.north & ' U ' & !tposObj.up
+        handle any
+            !tpos = ''
+        endhandle
+
+        --------------------------------------------------
+        -- HDIR : enlever " WRT /nomObjet"
+        --------------------------------------------------
+        
+		!hdir = ''
+
+        !hdir = !bran.hdir
+        handle any
+            !hdir = ''
+        endhandle
+
+        if (!hdir eq '') then
+            !hdir = !bran.Attribute('HDIR').String()
+            handle any
+                !hdir = ''
+            endhandle
+        endif
+
+        !wrtPos = 0
+        !wrtPos = !hdir.Match(' WRT')
+        handle any
+            !wrtPos = 0
+        endhandle
+
+        if (!wrtPos ne 0) then
+            !hdir = !hdir.Before(' WRT')
+            !hdir = !hdir.Trim()
+        endif
+
+
+        --------------------------------------------------
+        -- TDIR : enlever " WRT /nomObjet"
+        --------------------------------------------------
+        
+		!tdir = ''
+
+        !tdir = !bran.tdir
+        handle any
+            !tdir = ''
+        endhandle
+
+        if (!tdir eq '') then
+            !tdir = !bran.Attribute('TDIR').String()
+            handle any
+                !tdir = ''
+            endhandle
+        endif
+
+        !wrtPos = 0
+        !wrtPos = !tdir.Match(' WRT')
+        handle any
+            !wrtPos = 0
+        endhandle
+
+        if (!wrtPos ne 0) then
+            !tdir = !tdir.Before(' WRT')
+            !tdir = !tdir.Trim()
+        endif
+	
+
+        --------------------------------------------------
+        -- HBORE -> colonne HBOR
+        --------------------------------------------------
+        
+		!hbore = ''
+
+        !hbore = !bran.hbore
+        handle any
+            !hbore = ''
+        endhandle
+
+        if (!hbore eq '') then
+            !hbore = !bran.Attribute('HBORE').String()
+            handle any
+                !hbore = ''
+            endhandle
+        endif
+
+        !mmPos = 0
+        !mmPos = !hbore.Match('mm')
+        handle any
+            !mmPos = 0
+        endhandle
+
+        if (!mmPos ne 0) then
+            !hbore = !hbore.Before('mm')
+            !hbore = !hbore.Trim()
+        endif
+
+        --------------------------------------------------
+        -- TBORE -> colonne TBOR
+        --------------------------------------------------
+        
+		!tbore = ''
+
+        !tbore = !bran.tbore
+        handle any
+            !tbore = ''
+        endhandle
+
+        if (!tbore eq '') then
+            !tbore = !bran.Attribute('TBORE').String()
+            handle any
+                !tbore = ''
+            endhandle
+        endif
+
+        !mmPos = 0
+        !mmPos = !tbore.Match('mm')
+        handle any
+            !mmPos = 0
+        endhandle
+
+        if (!mmPos ne 0) then
+            !tbore = !tbore.Before('mm')
+            !tbore = !tbore.Trim()
+        endif
+
+
+        --------------------------------------------------
+        -- HCON
+        --------------------------------------------------
+        !hcon = !bran.hcon
+        handle any
+            !hcon = ''
+        endhandle
+
+        --------------------------------------------------
+        -- TCON
+        --------------------------------------------------
+        !tcon = !bran.tcon
+        handle any
+            !tcon = ''
+        endhandle
+
+        --------------------------------------------------
+        -- HSTUB robuste
+        --------------------------------------------------
+        !hstub = ''
+
+        !hstub = !bran.hstub
+        handle any
+            !hstub = ''
+        endhandle
+
+        if (!hstub eq '') then
+            !hstub = !bran.hstub.name
+            handle any
+                !hstub = ''
+            endhandle
+        endif
+
+        if (!hstub eq '') then
+            !hstub = !bran.hstube
+            handle any
+                !hstub = ''
+            endhandle
+        endif
+
+        if (!hstub eq '') then
+            !hstub = !bran.hstube.name
+            handle any
+                !hstub = ''
+            endhandle
+        endif
+
+        --------------------------------------------------
+        -- Ligne CSV
+        --------------------------------------------------
+        !ligne = !name & ';' & !dbname
+        !ligne = !ligne & ';' & !hpos
+        !ligne = !ligne & ';' & !tpos
+        !ligne = !ligne & ';' & !hdir
+        !ligne = !ligne & ';' & !tdir
+        !ligne = !ligne & ';' & !hbore
+        !ligne = !ligne & ';' & !tbore
+        !ligne = !ligne & ';' & !hcon
+        !ligne = !ligne & ';' & !tcon
+        !ligne = !ligne & ';' & !hstub
+
+
+        --------------------------------------------------
+        -- Append uniquement si clean
+        --------------------------------------------------
+        !lignes.append(!ligne)
+        !exportedBranches = !exportedBranches + 1
+
+    enddo
+
+    --------------------------------------------------
+    -- Write CSV
+    --------------------------------------------------
+	
+	
+
+!filename = '%HOME%\Branch_Attributes_Week_'
+!filename = !filename + !!NUMSEM
+!filename = !filename + '.csv'
+
+    !output = object FILE(!filename)
+    !output.WRITEFILE('OVERWRITE', !lignes)
+
+$p ---------------------------------
+$p BRANCH EXPORT COMPLETED
+$p FILE : $!filename
+$p BRANCHES EXPORTED : $!exportedBranches
+$p -----
+endfunction
