@@ -1,0 +1,256 @@
+console show
+
+$* PARAMETRES
+!csvFile = 'C:\Users\RDD1776N\Desktop\test\T.csv'
+!sep = ';'
+
+$* LECTURE CSV
+!file = object FILE(!csvFile)
+!lines = !file.ReadFile()
+
+!nbLines = !lines.size()
+
+if (!nbLines lt 2) then
+    $p ERROR : CSV vide ou sans donnees
+    return
+endif
+
+$* HEADER
+!headerLine = !lines[1]
+!headers = !headerLine.split(!sep)
+!nbCols = !headers.size()
+
+if (!nbCols lt 2) then
+    $p ERROR : CSV doit avoir au moins 2 colonnes
+    $p HEADER LU :
+    $p $!headerLine
+    return
+endif
+
+$p ---------------------------------
+$p CSV = $!csvFile
+$p NB LIGNES = $!nbLines
+$p NB COLONNES = $!nbCols
+$p ---------------------------------
+
+!ok = 0
+!ko = 0
+!koGoto = 0
+!koClaim = 0
+!koSet = 0
+!skipEmpty = 0
+!skipUDA = 0
+
+$* BOUCLE LIGNES CSV
+do !i from 2 to !nbLines
+
+    !line = !lines[!i]
+
+    if (!line eq '') then
+        skip
+    endif
+
+    !cols = !line.split(!sep)
+
+    !elem = ''
+    !elem = !cols[1]
+    handle any
+        !elem = ''
+    endhandle
+
+    !elem = !elem.Trim()
+    handle any
+    endhandle
+
+    if (!elem eq '') then
+        $p SKIP EMPTY ELEMENT LINE : $!i
+        !ko = !ko + 1
+        skip
+    endif
+
+    $!elem
+    handle any
+        $p GOTO FAILED : $!elem
+        !ko = !ko + 1
+        !koGoto = !koGoto + 1
+        skip
+    endhandle
+
+    claim $!elem hier
+    handle any
+        $p CLAIM FAILED : $!elem
+        !ko = !ko + 1
+        !koClaim = !koClaim + 1
+        skip
+    endhandle
+
+    $p ---------------------------------
+    $p ELEMENT : $!elem
+
+    $* BOUCLE COLONNES ATTRIBUTS
+    do !j from 2 to !nbCols
+
+        !param = ''
+        !value = ''
+
+        !param = !headers[!j]
+        handle any
+            !param = ''
+        endhandle
+
+        !value = !cols[!j]
+        handle any
+            !value = ''
+        endhandle
+
+        !param = !param.Trim()
+        handle any
+        endhandle
+
+        !value = !value.Trim()
+        handle any
+        endhandle
+
+        if (!param eq '') then
+            !skipEmpty = !skipEmpty + 1
+            skip
+        endif
+
+        if (!value eq '') then
+            !skipEmpty = !skipEmpty + 1
+            skip
+        endif
+
+        $* IGNORER LES UDA PROJET QUI COMMENCENT PAR :
+        !firstChar = ''
+        !firstChar = !param.Substring(1, 1)
+        handle any
+            !firstChar = ''
+        endhandle
+
+        if (!firstChar eq ':') then
+            $p SKIP UDA NON NATIF : $!param
+            !skipUDA = !skipUDA + 1
+            skip
+        endif
+
+        $* NORMALISER DESP VERS DESPARAM
+        if (!param eq 'DESP') then
+            !param = 'DESPARAM'
+        endif
+
+        if (!param eq 'Desp') then
+            !param = 'DESPARAM'
+        endif
+
+        if (!param eq 'desp') then
+            !param = 'DESPARAM'
+        endif
+
+        $* NETTOYAGE VALEUR
+        if (!value.match('|') gt 0) then
+            !value = !value.replace('|', ' ')
+        endif
+
+        $* DESPARAM : AJOUTER mm SAUF SUR LA PREMIERE VALEUR
+        if (!param eq 'DESPARAM') then
+
+            !valueMM = ''
+            !vals = !value.split(' ')
+            !idxVal = 0
+
+            do !v values !vals
+
+                !v = !v.Trim()
+                handle any
+                endhandle
+
+                if (!v ne '') then
+
+                    !idxVal = !idxVal + 1
+
+                    if (!idxVal eq 1) then
+
+                        !vOut = !v
+
+                    else
+
+                        !vOut = !v
+
+                        !hasMM = 0
+                        !hasMM = !vOut.Match('mm')
+                        handle any
+                            !hasMM = 0
+                        endhandle
+
+                        if (!hasMM eq 0) then
+                            !vOut = !vOut & 'mm'
+                        endif
+
+                    endif
+
+                    if (!valueMM eq '') then
+                        !valueMM = !vOut
+                    else
+                        !valueMM = !valueMM & ' ' & !vOut
+                    endif
+
+                endif
+
+            enddo
+
+            !value = !valueMM
+
+        endif
+
+        $* CONSTRUCTION COMMANDE NATIVE AVEVA
+        !cmd = ''
+
+        if (!param eq 'DESC') then
+            !cmd = 'DESC |' & !value & '|'
+        endif
+
+        if (!param eq 'Desc') then
+            !cmd = 'DESC |' & !value & '|'
+        endif
+
+        if (!param eq 'desc') then
+            !cmd = 'DESC |' & !value & '|'
+        endif
+
+        if (!cmd eq '') then
+            !cmd = !param & ' ' & !value
+        endif
+
+        $p APPLY : $!cmd
+
+        !setOK = 'YES'
+
+        $!cmd
+        handle any
+            !setOK = 'NO'
+        endhandle
+
+        if (!setOK eq 'NO') then
+            $p SET FAILED : $!elem PARAM=$!param VALUE=$!value
+            !ko = !ko + 1
+            !koSet = !koSet + 1
+        else
+            $p SET OK : $!elem PARAM=$!param VALUE=$!value
+            !ok = !ok + 1
+        endif
+
+    enddo
+
+enddo
+
+$p ---------------------------------
+$p INJECTION ATTRIBUTS NATIFS TERMINEE
+$p OK          = $!ok
+$p KO          = $!ko
+$p KO GOTO     = $!koGoto
+$p KO CLAIM    = $!koClaim
+$p KO SET      = $!koSet
+$p SKIP EMPTY  = $!skipEmpty
+$p SKIP UDA    = $!skipUDA
+$p ---------------------------------
